@@ -55,6 +55,24 @@ spec:
         command: ["sysctl", "-w", "vm.max_map_count=262144"]
         securityContext:
           privileged: true
+      {{- if .Values.cluster.plugins.list }}
+      - name: "plugins"
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+        command: ["/bin/bash"]
+        args: 
+        - "-c"
+        - |
+          declare -A plugins;
+          plugins=( {{ range $name, $parameters := .Values.cluster.plugins.list }}[{{ $name | quote }}]={{- if $parameters.fullname }}{{ $parameters.fullname | quote }}{{ else }}{{ $name | quote }} {{- end }} {{ end }} );
+          for i in "${!plugins[@]}";
+          do
+            plugin list | grep -q "$i" || plugin install "${plugins[$i]}";
+          done
+      {{- end}}
+        volumeMounts:
+        - mountPath: /usr/share/elasticsearch/plugins
+          name: {{ .Values.cluster.plugins.volume.name }}
       - name: "chown"
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
@@ -114,6 +132,10 @@ spec:
         volumeMounts:
         - mountPath: /usr/share/elasticsearch/data
           name: data
+        {{- if .Values.cluster.plugins.list }}
+        - mountPath: /usr/share/elasticsearch/plugins
+          name: {{ .Values.cluster.plugins.volume.name }}
+        {{- end }}
         - mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
           name: config
           subPath: elasticsearch.yml
@@ -131,11 +153,15 @@ spec:
       - name: config
         configMap:
           name: {{ template "elasticsearch.fullname" . }}
+  {{- if not .Values.cluster.plugins.persistence.enabled }}
+      - name: {{ .Values.cluster.plugins.volume.name }}
+  {{- end }}
   {{- if not .Values.master.persistence.enabled }}
       - name: data
         emptyDir: {}
-  {{- else }}
+  {{- end }}
   volumeClaimTemplates:
+  {{- if .Values.master.persistence.enabled }}
   - metadata:
       name: {{ .Values.master.persistence.name }}
     spec:
@@ -151,4 +177,21 @@ spec:
       resources:
         requests:
           storage: "{{ .Values.master.persistence.size }}"
+  {{ end }}
+  {{- if .Values.cluster.plugins.persistence.enabled }}
+  - metadata:
+      name: {{ .Values.cluster.plugins.volume.name }}
+    spec:
+      accessModes:
+        - {{ .Values.cluster.plugins.persistence.accessMode | quote }}
+    {{- if .Values.cluster.plugins.persistence.storageClass }}
+    {{- if (eq "-" .Values.cluster.plugins.persistence.storageClass) }}
+      storageClassName: ""
+    {{- else }}
+      storageClassName: "{{ .Values.cluster.plugins.persistence.storageClass }}"
+    {{- end }}
+    {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.cluster.plugins.persistence.size | quote }}
   {{ end }}
