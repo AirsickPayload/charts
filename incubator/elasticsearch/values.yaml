@@ -19,19 +19,23 @@ cluster:
   plugins:
     list:
       ## if you wish to use your own list of plugins
-      ## remember to include the plugin listen below
+      ## remember to include the 'cloud-kubernetes' plugin listed below
       ## otherwise you'll be getting 'Unknown Discovery type [kubernetes]' errors! 
-      #- "io.fabric8/elasticsearch-cloud-kubernetes/2.4.5_01"
       # cloud-kubernetes:
-      #   fullname: "io.fabric8/elasticsearch-cloud-kubernetes/2.4.5_01"
+      #   url: "io.fabric8:elasticsearch-cloud-kubernetes:5.4.2"
       # analysis-icu:
-      #   fullname:
+      ## For officially supported plugins you can leave the 'url' field empty
+      #   url:
     volume:
       name: plugins
     persistence:
       enabled: true
       accessMode: ReadWriteOnce
       size: 1Gi
+  customScripts:
+    ## Chart does NOT create the configMap for you!
+    ## You'll have to create one on your own.
+    #configMap: my-es-scripts
 
 client:
   name: client
@@ -101,8 +105,6 @@ data:
     requests:
       cpu: "25m"
       memory: "1536Mi"
-
-
 
   ## (dict) If specified, apply these annotations to each data Pod
   # podAnnotations:
