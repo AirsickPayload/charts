@@ -31,7 +31,7 @@ cluster:
     persistence:
       enabled: true
       accessMode: ReadWriteOnce
-      size: 1Gi
+      size: 256Mi
   customScripts:
     ## Chart does NOT create the configMap for you!
     ## You'll have to create one on your own.
@@ -79,7 +79,6 @@ master:
     requests:
       cpu: "25m"
       memory: "512Mi"
-
 
   ## (dict) If specified, apply these annotations to each master Pod
   # podAnnotations:
