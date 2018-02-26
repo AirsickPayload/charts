@@ -164,6 +164,7 @@ spec:
           name: {{ template "elasticsearch.fullname" . }}
     {{- if not .Values.cluster.plugins.persistence.enabled }}
       - name: {{ .Values.cluster.plugins.volume.name }}
+        emptyDir: {}      
     {{- end }}
     {{- if not .Values.master.persistence.enabled }}
       - name: data
