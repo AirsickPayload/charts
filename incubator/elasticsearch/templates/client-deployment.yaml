@@ -54,6 +54,24 @@ spec:
         command: ["sysctl", "-w", "vm.max_map_count=262144"]
         securityContext:
           privileged: true
+      {{- if .Values.cluster.plugins.list }}
+      - name: "plugins"
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+        command: ["/bin/bash"]
+        args: 
+        - "-c"
+        - |
+          declare -A plugins;
+          plugins=( {{ range $name, $parameters := .Values.cluster.plugins.list }}[{{ $name | quote }}]={{- if $parameters.url }}{{ $parameters.url | quote }}{{ else }}{{ $name | quote }} {{- end }} {{ end }} );
+          for i in "${!plugins[@]}";
+          do
+            plugin list | grep -q "$i" || plugin install "${plugins[$i]}";
+          done
+      {{- end }}
+        volumeMounts:
+        - mountPath: /usr/share/elasticsearch/plugins
+          name: {{ .Values.cluster.plugins.volume.name }}
       containers:
       - name: elasticsearch
         env:
@@ -116,7 +134,24 @@ spec:
           name: config
           subPath: log4j2.properties
 {{- end }}
+      {{- if .Values.cluster.customScripts }}
+        - mountPath: /usr/share/elasticsearch/scripts
+          name: scripts
+      {{- end }}
+      {{- if .Values.cluster.plugins.list }}
+        - mountPath: /usr/share/elasticsearch/plugins
+          name: {{ .Values.cluster.plugins.volume.name }}
+      {{- end }}
       volumes:
       - name: config
         configMap:
           name: {{ template "elasticsearch.fullname" . }}
+    {{- if .Values.cluster.customScripts }}
+      - name: scripts
+        configMap:
+          name: {{ .Values.cluster.customScripts.configMap }}
+    {{- end }}
+      {{- if .Values.cluster.plugins.list }}
+      - name: {{ .Values.cluster.plugins.volume.name }}
+        emptyDir: {}
+      {{- end }}

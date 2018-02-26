@@ -55,6 +55,24 @@ spec:
         command: ["sysctl", "-w", "vm.max_map_count=262144"]
         securityContext:
           privileged: true
+      {{- if .Values.cluster.plugins.list }}
+      - name: "plugins"
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+        command: ["/bin/bash"]
+        args: 
+        - "-c"
+        - |
+          declare -A plugins;
+          plugins=( {{ range $name, $parameters := .Values.cluster.plugins.list }}[{{ $name | quote }}]={{- if $parameters.url }}{{ $parameters.url | quote }}{{ else }}{{ $name | quote }} {{- end }} {{ end }} );
+          for i in "${!plugins[@]}";
+          do
+            plugin list | grep -q "$i" || plugin install "${plugins[$i]}";
+          done
+        volumeMounts:
+        - mountPath: /usr/share/elasticsearch/plugins
+          name: {{ .Values.cluster.plugins.volume.name }}
+      {{- end }}
       - name: "chown"
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
@@ -110,6 +128,14 @@ spec:
         volumeMounts:
         - mountPath: /usr/share/elasticsearch/data
           name: data
+      {{- if .Values.cluster.customScripts }}
+        - mountPath: /usr/share/elasticsearch/scripts
+          name: scripts
+      {{- end }}
+      {{- if .Values.cluster.plugins.list }}
+        - mountPath: /usr/share/elasticsearch/plugins
+          name: {{ .Values.cluster.plugins.volume.name }}
+      {{- end }}
         - mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
           name: config
           subPath: elasticsearch.yml
@@ -132,13 +158,18 @@ spec:
               command: ["/bin/bash","/pre-stop-hook.sh"]
       terminationGracePeriodSeconds: {{ .Values.data.terminationGracePeriodSeconds }}
       volumes:
+    {{- if .Values.cluster.customScripts }}
+      - name: scripts
+        configMap:
+          name: {{ .Values.cluster.customScripts.configMap }}
+    {{- end }}
       - name: config
         configMap:
           name: {{ template "elasticsearch.fullname" . }}
-  {{- if not .Values.data.persistence.enabled }}
+    {{- if not .Values.data.persistence.enabled }}
       - name: data
         emptyDir: {}
-  {{- else }}
+    {{- else }}
   volumeClaimTemplates:
   - metadata:
       name: {{ .Values.data.persistence.name }}
@@ -156,3 +187,20 @@ spec:
         requests:
           storage: "{{ .Values.data.persistence.size }}"
   {{- end }}
+  {{- if .Values.cluster.plugins.persistence.enabled }}
+  - metadata:
+      name: {{ .Values.cluster.plugins.volume.name }}
+    spec:
+      accessModes:
+        - {{ .Values.cluster.plugins.persistence.accessMode | quote }}
+    {{- if .Values.cluster.plugins.persistence.storageClass }}
+    {{- if (eq "-" .Values.cluster.plugins.persistence.storageClass) }}
+      storageClassName: ""
+    {{- else }}
+      storageClassName: "{{ .Values.cluster.plugins.persistence.storageClass }}"
+    {{- end }}
+    {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.cluster.plugins.persistence.size | quote }}
+  {{ end }}

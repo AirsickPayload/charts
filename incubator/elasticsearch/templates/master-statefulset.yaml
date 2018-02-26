@@ -69,10 +69,10 @@ spec:
           do
             plugin list | grep -q "$i" || plugin install "${plugins[$i]}";
           done
-      {{- end}}
         volumeMounts:
         - mountPath: /usr/share/elasticsearch/plugins
           name: {{ .Values.cluster.plugins.volume.name }}
+      {{- end }}
       - name: "chown"
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
@@ -132,14 +132,6 @@ spec:
         volumeMounts:
         - mountPath: /usr/share/elasticsearch/data
           name: data
-        {{- if .Values.cluster.customScripts }}
-        - mountPath: /usr/share/elasticsearch/scripts
-          name: scripts
-        {{- end }}
-        {{- if .Values.cluster.plugins.list }}
-        - mountPath: /usr/share/elasticsearch/plugins
-          name: {{ .Values.cluster.plugins.volume.name }}
-        {{- end }}
         - mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
           name: config
           subPath: elasticsearch.yml
@@ -153,19 +145,27 @@ spec:
           name: config
           subPath: log4j2.properties
 {{- end }}
+      {{- if .Values.cluster.customScripts }}
+        - mountPath: /usr/share/elasticsearch/scripts
+          name: scripts
+      {{- end }}
+      {{- if .Values.cluster.plugins.list }}
+        - mountPath: /usr/share/elasticsearch/plugins
+          name: {{ .Values.cluster.plugins.volume.name }}
+      {{- end }}
       volumes:
-  {{- if .Values.cluster.customScripts }}
+    {{- if .Values.cluster.customScripts }}
       - name: scripts
         configMap:
           name: {{ .Values.cluster.customScripts.configMap }}
-  {{- end }}
+    {{- end }}
       - name: config
         configMap:
           name: {{ template "elasticsearch.fullname" . }}
-  {{- if not .Values.cluster.plugins.persistence.enabled }}
+    {{- if not .Values.cluster.plugins.persistence.enabled }}
       - name: {{ .Values.cluster.plugins.volume.name }}
-  {{- end }}
-  {{- if not .Values.master.persistence.enabled }}
+    {{- end }}
+    {{- if not .Values.master.persistence.enabled }}
       - name: data
         emptyDir: {}
   {{- end }}

@@ -55,7 +55,6 @@ client:
     requests:
       cpu: "25m"
       memory: "512Mi"
-
   ## (dict) If specified, apply these annotations to each client Pod
   # podAnnotations:
   #   example: client-foo
@@ -104,6 +103,7 @@ data:
     requests:
       cpu: "25m"
       memory: "1536Mi"
+
 
   ## (dict) If specified, apply these annotations to each data Pod
   # podAnnotations:
