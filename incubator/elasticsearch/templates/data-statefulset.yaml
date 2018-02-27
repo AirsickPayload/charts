@@ -169,8 +169,13 @@ spec:
     {{- if not .Values.data.persistence.enabled }}
       - name: data
         emptyDir: {}
-    {{- else }}
+    {{- end }}
+    {{- if not .Values.cluster.plugins.persistence.enabled }}
+      - name: {{ .Values.cluster.plugins.volume.name }}
+        emptyDir: {}      
+    {{- end }}
   volumeClaimTemplates:
+  {{- if .Values.data.persistence.enabled }}
   - metadata:
       name: {{ .Values.data.persistence.name }}
     spec:
